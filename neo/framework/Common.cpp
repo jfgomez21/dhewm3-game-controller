@@ -208,6 +208,10 @@ private:
 	void						PrintLoadingMessage( const char *msg );
 	void						FilterLangList( idStrList* list, idStr lang );
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	void						InitGameController();
+#endif
+
 	bool						com_fullyInitialized;
 	bool						com_refreshOnPrint;		// update the screen every print for dmap
 	int							com_errorEntered;		// 0, ERP_DROP, etc
@@ -231,6 +235,11 @@ private:
 #endif
 
 	SDL_TimerID					async_timer;
+
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	SDL_GameController *gameController;
+#endif
+
 };
 
 idCommonLocal	commonLocal;
@@ -259,6 +268,10 @@ idCommonLocal::idCommonLocal( void ) {
 #endif
 
 	async_timer = 0;
+
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	gameController = NULL;
+#endif
 }
 
 /*
@@ -2855,6 +2868,39 @@ static bool checkForHelp(int argc, char **argv)
 
 #endif // UINTPTR_MAX defined
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+void idCommonLocal::InitGameController(){
+	const char *mappings = fileSystem->RelativePathToOSPath("gamecontroller.db", "fs_configpath");
+
+	Printf("Controller Mappings Location: %s\n", mappings);
+
+	if(fileSystem->ReadFile("gamecontroller.db", NULL) > 0){
+		int result = SDL_GameControllerAddMappingsFromFile(mappings);
+
+		if(result == -1){
+			Printf("Failed to read controller mappings: %s\n", SDL_GetError());
+		}
+		else{
+			Printf("Controller Mapping(s): %d\n", result);
+		}
+	}
+
+	if(SDL_IsGameController(0)){
+		gameController = SDL_GameControllerOpen(0);
+
+		if(gameController){
+			Printf("Controller Opened: %s\n", SDL_GameControllerName(gameController));
+		}
+		else{
+			Printf("Failed to open controller: %s\n", SDL_GetError());
+		}
+	}
+	else{
+		Printf("No Controllers Found\n");
+	}	
+}
+#endif
+
 /*
 =================
 idCommonLocal::Init
@@ -2891,7 +2937,7 @@ void idCommonLocal::Init( int argc, char **argv ) {
 #endif
 #endif
 
-	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK)) // init joystick to work around SDL 2.0.9 bug #4391
+	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER))
 		Sys_Error("Error while initializing SDL: %s", SDL_GetError());
 
 	Sys_InitThreads();
@@ -2991,6 +3037,15 @@ void idCommonLocal::Init( int argc, char **argv ) {
 		// load the persistent console history
 		console->LoadHistory();
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+		if(SDL_NumJoysticks() > 0){
+			InitGameController();
+		}
+		else{
+			Printf("No joysticks found\n");
+		}
+#endif
+
 		com_fullyInitialized = true;
 	}
 
@@ -3060,6 +3115,12 @@ void idCommonLocal::Shutdown( void ) {
 	idLib::ShutDown();
 
 	Sys_ShutdownThreads();
+
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	if(SDL_GameControllerGetAttached(gameController)){
+		SDL_GameControllerClose(gameController);
+	}
+#endif
 
 	SDL_Quit();
 }

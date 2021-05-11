@@ -360,6 +360,9 @@ private:
 
 	void			Key( int keyNum, bool down );
 
+	void			smoothLeftAxis(idVec2 &axis);
+	int			sign(int value);
+
 	idVec3			viewangles;
 	int				flags;
 	int				impulse;
@@ -672,29 +675,68 @@ void idUsercmdGenLocal::MouseMove( void ) {
 	}
 }
 
+void idUsercmdGenLocal::smoothLeftAxis(idVec2 &axis){
+	//normalize values from -1 to 1
+	axis.x = axis.x / SHRT_MAX;
+	axis.y = axis.y / SHRT_MAX;	
+
+	float d2 = 0.25f;  //TODO - add variable - verical/horizontal dead zone
+
+	//clamp values within horizontal/verical deadzones
+	//helps keep movement in one direction
+	if(axis.x > -d2 && axis.x < d2){
+		axis.x = 0;
+	}
+
+	if(axis.y > -d2 && axis.y < d2){
+		axis.y = 0;
+	}
+
+	float lengthSq = axis.LengthSqr();
+	float deadZone = 0.15f; //TODO - add variable - controller deadzone
+
+	if(lengthSq > (deadZone * deadZone)){
+		axis.Normalize();
+
+		float scale = (idMath::Sqrt(lengthSq) - deadZone) / (1.0f - deadZone);
+
+		axis.x = axis.x * scale * SHRT_MAX;
+		axis.y = axis.y * scale * SHRT_MAX;
+	}
+	else{
+		axis.x = 0;
+		axis.y = 0;
+	}
+}
+
+int idUsercmdGenLocal::sign(int value){
+	return (0 < value) - (value < 0);	
+}
+
 /*
 =================
 idUsercmdGenLocal::JoystickMove
 =================
 */
 void idUsercmdGenLocal::JoystickMove( void ) {
-	float	anglespeed;
+	idVec2 leftAxis = idVec2(joystickAxis[LX_AXIS], joystickAxis[LY_AXIS]);
 
-	if ( toggled_run.on ^ ( in_alwaysRun.GetBool() && idAsyncNetwork::IsActive() ) ) {
-		anglespeed = idMath::M_MS2SEC * USERCMD_MSEC * in_angleSpeedKey.GetFloat();
-	} else {
-		anglespeed = idMath::M_MS2SEC * USERCMD_MSEC;
-	}
+	smoothLeftAxis(leftAxis);
 
-	if ( !ButtonState( UB_STRAFE ) ) {
-		viewangles[YAW] += anglespeed * in_yawSpeed.GetFloat() * joystickAxis[AXIS_SIDE];
-		viewangles[PITCH] += anglespeed * in_pitchSpeed.GetFloat() * joystickAxis[AXIS_FORWARD];
-	} else {
-		cmd.rightmove = idMath::ClampChar( cmd.rightmove + joystickAxis[AXIS_SIDE] );
-		cmd.forwardmove = idMath::ClampChar( cmd.forwardmove + joystickAxis[AXIS_FORWARD] );
-	}
+	int forward = cmd.forwardmove + (KEY_MOVESPEED * -sign(leftAxis.y));
+	int side = cmd.rightmove + (KEY_MOVESPEED * sign(leftAxis.x));
 
-	cmd.upmove = idMath::ClampChar( cmd.upmove + joystickAxis[AXIS_UP] );
+	cmd.forwardmove = idMath::ClampChar( forward );
+	cmd.rightmove = idMath::ClampChar( side );
+	
+	int rsx = (int) ((joystickAxis[RX_AXIS] / (float) SHRT_MAX) * 15);  //TODO - add variable - joystick mouse speed
+	int rsy = (int) ((joystickAxis[RY_AXIS] / (float) SHRT_MAX) * 15); //TODO - add variable - joystick mouse speed
+
+	mouseDx += rsx;
+	continuousMouseX += rsx;
+
+	mouseDy += rsy;
+	continuousMouseY += rsy;
 }
 
 /*
@@ -784,11 +826,11 @@ void idUsercmdGenLocal::MakeCurrent( void ) {
 		// get basic movement from keyboard
 		KeyMove();
 
+		// get basic movement from joystick
+		JoystickMove();	
+
 		// get basic movement from mouse
 		MouseMove();
-
-		// get basic movement from joystick
-		JoystickMove();
 
 		// check to make sure the angles haven't wrapped
 		if ( viewangles[PITCH] - oldAngles[PITCH] > 90 ) {
@@ -1034,14 +1076,58 @@ void idUsercmdGenLocal::Keyboard( void ) {
 }
 
 /*
+static void filterDeadZones(int &x, int &y){
+	idVec2 v1 = idVec2(x, y);
+	float lengthSq = v1.LengthSqr();
+	float deadZone = 1000;
+
+	if(lengthSq < (deadZone * deadZone)){
+		x = 0;
+		y = 0;
+	}
+	else{
+		float d2 = 2000;
+
+		if(v1.x > -d2 && v1.x < d2){
+			v1.x = 0;
+		}
+
+		if(v1.y > -d2 && v1.y < d2){
+			v1.y = 0;
+		}
+
+		//x = v1.x;
+		//y = v1.y;
+
+		
+		v1.Normalize();
+
+		float scale = (idMath::Sqrt(lengthSq) - deadZone) / (float) (SHRT_MAX - deadZone);
+
+		x = v1.x * scale * SHRT_MAX;
+		y = v1.y * scale * SHRT_MAX;
+	}
+}
+*/
+
+/*
 ===============
 idUsercmdGenLocal::Joystick
 ===============
 */
 void idUsercmdGenLocal::Joystick( void ) {
-	memset( joystickAxis, 0, sizeof( joystickAxis ) );
-}
+	int numEvents = Sys_PollJoyAxisEvents();
 
+	for(int i = 0; i < numEvents; i++){
+		int axis, value;
+
+		Sys_ReturnJoyAxisEvent(i, axis, value);
+
+		joystickAxis[axis] = value;
+	}
+	
+	Sys_EndJoyAxisEvents();
+}
 /*
 ================
 idUsercmdGenLocal::UsercmdInterrupt

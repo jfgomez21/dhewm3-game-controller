@@ -44,12 +44,12 @@ typedef enum {
 } cpuidSimd_t;
 
 typedef enum {
-	AXIS_SIDE,
-	AXIS_FORWARD,
-	AXIS_UP,
-	AXIS_ROLL,
-	AXIS_YAW,
-	AXIS_PITCH,
+	LX_AXIS,
+	LY_AXIS,
+	LEFT_TRIGGER,
+	RX_AXIS,
+	RY_AXIS,
+	RIGHT_TRIGGER,
 	MAX_JOYSTICK_AXIS
 } joystickAxis_t;
 
@@ -58,8 +58,10 @@ typedef enum {
 	SE_KEY,					// evValue is a key code, evValue2 is the down flag
 	SE_CHAR,				// evValue is an ascii char
 	SE_MOUSE,				// evValue and evValue2 are reletive signed x / y moves
-	SE_JOYSTICK_AXIS,		// evValue is an axis number and evValue2 is the current state (-127 to 127)
-	SE_CONSOLE				// evPtr is a char*, from typing something at a non-game console
+	SE_JOYSTICK_AXIS,
+	SE_JOYSTICK_BUTTON,		// evValue is an axis number and evValue2 is the current state (-127 to 127)
+	SE_JOYSTICK_HAT,
+	SE_CONSOLE	// evPtr is a char*, from typing something at a non-game console
 } sysEventType_t;
 
 typedef enum {
@@ -175,6 +177,15 @@ void			Sys_EndKeyboardInputEvents( void );
 int				Sys_PollMouseInputEvents( void );
 int				Sys_ReturnMouseInputEvent( const int n, int &action, int &value );
 void			Sys_EndMouseInputEvents( void );
+
+//myedit
+// joystick input polling	
+int 				Sys_PollJoyAxisEvents( void );
+int				Sys_ReturnJoyAxisEvent( const int n, int &axis, int &value );
+void				Sys_EndJoyAxisEvents( void );
+int				Sys_PollSysEvents(void);
+int				Sys_ReturnSysEvent(const int n, sysEvent_t &dest);
+void				Sys_EndSysEvents(void);
 
 // when the console is down, or the game is about to perform a lengthy
 // operation like map loading, the system can release the mouse cursor

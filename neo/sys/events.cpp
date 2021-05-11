@@ -64,6 +64,7 @@ const char *kbdNames[] = {
 };
 
 idCVar in_kbd("in_kbd", "english", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_NOCHEAT, "keyboard layout", kbdNames, idCmdSystem::ArgCompletion_String<kbdNames> );
+int previousTriggerState[MAX_JOYSTICK_AXIS] = {0, 0, 0, 0, 0, 0};
 
 struct kbd_poll_t {
 	int key;
@@ -91,8 +92,23 @@ struct mouse_poll_t {
 	}
 };
 
+struct axis_poll_t {
+	int axis;
+	int value;
+
+	axis_poll_t() {
+	}
+
+	axis_poll_t(int a, int v) {
+		axis = a;
+		value = v;
+	}
+};
+
 static idList<kbd_poll_t> kbd_polls;
 static idList<mouse_poll_t> mouse_polls;
+static idList<axis_poll_t> axis_polls;
+static idList<sysEvent_t> event_polls;
 
 static byte mapkey(SDL_Keycode key) {
 	switch (key) {
@@ -284,6 +300,8 @@ Sys_InitInput
 void Sys_InitInput() {
 	kbd_polls.SetGranularity(64);
 	mouse_polls.SetGranularity(64);
+	axis_polls.SetGranularity(64);
+	event_polls.SetGranularity(64);
 
 #if !SDL_VERSION_ATLEAST(2, 0, 0)
 	SDL_EnableUNICODE(1);
@@ -301,6 +319,8 @@ Sys_ShutdownInput
 void Sys_ShutdownInput() {
 	kbd_polls.Clear();
 	mouse_polls.Clear();
+	axis_polls.Clear();
+	event_polls.Clear();
 }
 
 /*
@@ -379,6 +399,134 @@ void Sys_GrabMouseCursor(bool grabIt) {
 		flags = GRAB_SETSTATE;
 
 	GLimp_GrabInput(flags);
+}
+
+static sysEvent_t createSysEvent(sysEventType_t type, int value1, int value2){
+	sysEvent_t res = {};
+	res.evType = type;
+	res.evValue = value1;
+	res.evValue2 = value2;
+
+	return res;
+}
+
+static sysEvent_t createJoystickEvent(joystickAxis_t axis, int value){
+	axis_polls.Append(axis_poll_t(axis, value));
+
+	return createSysEvent(SE_JOYSTICK_AXIS, axis, value);
+}
+
+static sysEvent_t createKeyEvent(keyNum_t button, int state){
+	keyNum_t key = button;
+	int isPressed = state == SDL_PRESSED;
+
+	if(button == K_JOY10 || button == K_JOY1 || button == K_JOY2){
+		key = K_ESCAPE; //K_ESCAPE is hard coded to bring up menu
+
+		if(button == K_JOY1){
+			key = K_MOUSE1; //K_MOUSE1 is hard coded as click in GUI
+		}
+		else if(button == K_JOY2){
+			key = K_MOUSE2; //K_MOUSE2 hard code in the GUI
+		}
+	}
+
+	//events for user commands
+	kbd_polls.Append(kbd_poll_t(button, isPressed));
+
+	return createSysEvent(SE_KEY, key, isPressed);
+}
+
+static joystickAxis_t mapControllerAxis(int axis){
+	switch(axis){
+		case SDL_CONTROLLER_AXIS_LEFTX:
+			return LX_AXIS;
+		case SDL_CONTROLLER_AXIS_LEFTY:
+			return LY_AXIS;
+		case SDL_CONTROLLER_AXIS_RIGHTX:
+			return RX_AXIS;
+		case SDL_CONTROLLER_AXIS_RIGHTY:
+			return RY_AXIS;
+		case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+			return LEFT_TRIGGER;
+		case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+			return RIGHT_TRIGGER;
+	}
+
+	return MAX_JOYSTICK_AXIS;
+}
+
+static bool isTriggerPressed(joystickAxis_t type, int value){
+	return previousTriggerState[type] == 0 && value > 0; //TODO - filter dead zones?
+}
+
+static bool isTriggerReleased(joystickAxis_t type, int value){
+	return previousTriggerState[type] > 0 && value == 0; //TODO - filter dead zones?
+}
+
+static sysEvent_t handleControllerAxisMotion(SDL_Event &ev){
+	joystickAxis_t axis = mapControllerAxis(ev.caxis.axis);
+
+	if(axis == LEFT_TRIGGER || axis == RIGHT_TRIGGER){
+		keyNum_t button = axis == LEFT_TRIGGER ? K_JOY7 : K_JOY8;
+		int state = -1;
+
+		if(isTriggerPressed(axis, ev.caxis.value)){
+			state = 1;
+		}
+		else if(isTriggerReleased(axis, ev.caxis.value)){
+			state = 0;
+		}
+
+		if(state != -1){
+			event_polls.Append(createKeyEvent(button, state));
+		}
+	}
+
+	previousTriggerState[axis] = ev.caxis.value;
+
+	return createJoystickEvent(axis, ev.caxis.value);
+}
+
+static keyNum_t mapControllerButton(int button){
+	switch(button){
+		case SDL_CONTROLLER_BUTTON_A:
+			return K_JOY1;
+		case SDL_CONTROLLER_BUTTON_B:
+			return K_JOY2;
+		case SDL_CONTROLLER_BUTTON_Y:
+			return K_JOY3;
+		case SDL_CONTROLLER_BUTTON_X:
+			return K_JOY4;
+		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+			return K_JOY5;
+		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+			return K_JOY6;
+		case SDL_CONTROLLER_BUTTON_BACK:
+			return K_JOY9;
+		case SDL_CONTROLLER_BUTTON_START:
+			return K_JOY10;
+		case SDL_CONTROLLER_BUTTON_GUIDE:
+			return K_JOY11;
+		case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+			return K_JOY12;
+		case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+			return K_JOY13;
+		case SDL_CONTROLLER_BUTTON_DPAD_UP:
+			return K_JOY14;
+		case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+			return K_JOY15;
+		case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+			return K_JOY16;
+		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+			return K_JOY17;
+	}
+
+	return K_LAST_KEY;
+}
+
+static sysEvent_t handleControllerButton(SDL_Event &ev){
+	return createKeyEvent(mapControllerButton(ev.cbutton.button), ev.cbutton.state);
 }
 
 /*
@@ -577,7 +725,14 @@ sysEvent_t Sys_GetEvent() {
 			// on windows we get this event whenever the window gains focus.. just ignore it.
 			continue;
 #endif
-
+		
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+		case SDL_CONTROLLERAXISMOTION:
+			return handleControllerAxisMotion(ev); //TODO - handle dead zones
+		case SDL_CONTROLLERBUTTONDOWN:
+		case SDL_CONTROLLERBUTTONUP:
+			return handleControllerButton(ev);
+#endif
 		case SDL_MOUSEMOTION:
 			res.evType = SE_MOUSE;
 			res.evValue = ev.motion.xrel;
@@ -691,6 +846,8 @@ void Sys_ClearEvents() {
 
 	kbd_polls.SetNum(0, false);
 	mouse_polls.SetNum(0, false);
+	axis_polls.SetNum(0, false);
+	event_polls.SetNum(0, false);
 }
 
 /*
@@ -769,4 +926,54 @@ Sys_EndMouseInputEvents
 */
 void Sys_EndMouseInputEvents() {
 	mouse_polls.SetNum(0, false);
+}
+
+/*
+================
+Sys_PollJoyAxisEvents
+================
+*/
+int Sys_PollJoyAxisEvents() {
+	return axis_polls.Num();
+}
+
+/*
+================
+Sys_ReturnJoyAxisEvent
+================
+*/
+int	Sys_ReturnJoyAxisEvent(const int n, int &axis, int &value) {
+	if (n >= axis_polls.Num())
+		return 0;
+
+	axis = axis_polls[n].axis;
+	value = axis_polls[n].value;
+	return 1;
+}
+
+/*
+================
+Sys_EndJoyAxisEvents
+================
+*/
+void Sys_EndJoyAxisEvents() {
+	axis_polls.SetNum(0, false);
+}
+
+int Sys_PollSysEvents() {
+	return event_polls.Num();
+}
+
+int Sys_ReturnSysEvent(const int n, sysEvent_t &dest){
+	if(n >= event_polls.Num()){
+		return 0;
+	}
+
+	dest = event_polls[n];
+
+	return 1;
+}
+
+void Sys_EndSysEvents(){
+	event_polls.SetNum(0, false);
 }

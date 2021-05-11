@@ -31,12 +31,17 @@ If you have questions concerning this license or the applicable additional terms
 #include "framework/KeyInput.h"
 
 #include "framework/EventLoop.h"
+#include "idlib/math/Vector.h"
 
 idCVar idEventLoop::com_journal( "com_journal", "0", CVAR_INIT|CVAR_SYSTEM, "1 = record journal, 2 = play back journal", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
 
 idEventLoop eventLoopLocal;
 idEventLoop *eventLoop = &eventLoopLocal;
 
+//mouse coordinates based on the right joystick
+int dx = 0;
+int dy = 0;
+int mouseSpeed = 10;
 
 /*
 =================
@@ -169,6 +174,22 @@ void idEventLoop::ProcessEvent( sysEvent_t ev ) {
 	}
 }
 
+sysEvent_t CreateMouseEvent(int dx, int dy){
+	idVec2 v = idVec2();
+	v.x = (dx / (float) SHRT_MAX) * mouseSpeed; //TODO - add variable - controller mouse speed
+	v.y = (dy / (float) SHRT_MAX) * mouseSpeed;
+
+	v.Truncate(mouseSpeed);
+
+	sysEvent_t mouse = {};
+
+	mouse.evType = SE_MOUSE;
+	mouse.evValue = (int) v.x;
+	mouse.evValue2 = (int) v.y;
+
+	return mouse;
+}
+
 /*
 ===============
 idEventLoop::RunEventLoop
@@ -176,6 +197,12 @@ idEventLoop::RunEventLoop
 */
 int idEventLoop::RunEventLoop( bool commandExecution ) {
 	sysEvent_t	ev;
+
+	if(dx != 0 || dy != 0){
+		//send the simulated mouse events
+		//downstream
+		ProcessEvent(CreateMouseEvent(dx, dy)); //MouseEvent for GUI
+	}
 
 	while ( 1 ) {
 
@@ -186,11 +213,39 @@ int idEventLoop::RunEventLoop( bool commandExecution ) {
 
 		ev = GetEvent();
 
-		// if no more events are available
-		if ( ev.evType == SE_NONE ) {
-			return 0;
+		if(ev.evType != SE_NONE){
+			ProcessEvent(ev);
+
+			if(ev.evType == SE_JOYSTICK_AXIS){
+				//if the right stick was moved update
+				//the simulated mouse dx/dy values
+				if(ev.evValue == RX_AXIS || ev.evValue == RY_AXIS){
+					if(ev.evValue == RX_AXIS){
+						dx = ev.evValue2;
+					}
+					else {
+						dy = ev.evValue2;
+					}
+				}
+			}
+
+			//one SDL event can lead to multiple sys events
+			//therefore poll them from the sys event queue 
+			//and send them downstream
+			sysEvent_t event = {};
+			int count = Sys_PollSysEvents();
+
+			for(int i = 0; i < count; i++){
+				Sys_ReturnSysEvent(i, event);
+
+				ProcessEvent(event);
+			}
+
+			Sys_EndSysEvents();
 		}
-		ProcessEvent( ev );
+		else{
+			return 0; //no more events available
+		}
 	}
 
 	return 0;	// never reached
