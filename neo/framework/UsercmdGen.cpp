@@ -35,6 +35,12 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "framework/UsercmdGen.h"
 
+#include <SDL_joystick.h>
+
+#ifndef SDL_JOYSTICK_AXIS_MAX
+	#define SDL_JOYSTICK_AXIS_MAX 32767
+#endif
+
 /*
 ================
 usercmd_t::ByteSwap
@@ -677,8 +683,8 @@ void idUsercmdGenLocal::MouseMove( void ) {
 
 void idUsercmdGenLocal::smoothLeftAxis(idVec2 &axis){
 	//normalize values from -1 to 1
-	axis.x = axis.x / SHRT_MAX;
-	axis.y = axis.y / SHRT_MAX;	
+	axis.x = axis.x / SDL_JOYSTICK_AXIS_MAX;
+	axis.y = axis.y / SDL_JOYSTICK_AXIS_MAX;	
 
 	float d2 = 0.25f;  //TODO - add variable - verical/horizontal dead zone
 
@@ -700,8 +706,8 @@ void idUsercmdGenLocal::smoothLeftAxis(idVec2 &axis){
 
 		float scale = (idMath::Sqrt(lengthSq) - deadZone) / (1.0f - deadZone);
 
-		axis.x = axis.x * scale * SHRT_MAX;
-		axis.y = axis.y * scale * SHRT_MAX;
+		axis.x = axis.x * scale * SDL_JOYSTICK_AXIS_MAX;
+		axis.y = axis.y * scale * SDL_JOYSTICK_AXIS_MAX;
 	}
 	else{
 		axis.x = 0;
@@ -729,8 +735,8 @@ void idUsercmdGenLocal::JoystickMove( void ) {
 	cmd.forwardmove = idMath::ClampChar( forward );
 	cmd.rightmove = idMath::ClampChar( side );
 	
-	int rsx = (int) ((joystickAxis[RX_AXIS] / (float) SHRT_MAX) * 15);  //TODO - add variable - joystick mouse speed
-	int rsy = (int) ((joystickAxis[RY_AXIS] / (float) SHRT_MAX) * 15); //TODO - add variable - joystick mouse speed
+	int rsx = (int) ((joystickAxis[RX_AXIS] / (float) SDL_JOYSTICK_AXIS_MAX) * 15);  //TODO - add variable - joystick mouse speed
+	int rsy = (int) ((joystickAxis[RY_AXIS] / (float) SDL_JOYSTICK_AXIS_MAX) * 15); //TODO - add variable - joystick mouse speed
 
 	mouseDx += rsx;
 	continuousMouseX += rsx;
@@ -1074,41 +1080,6 @@ void idUsercmdGenLocal::Keyboard( void ) {
 
 	Sys_EndKeyboardInputEvents();
 }
-
-/*
-static void filterDeadZones(int &x, int &y){
-	idVec2 v1 = idVec2(x, y);
-	float lengthSq = v1.LengthSqr();
-	float deadZone = 1000;
-
-	if(lengthSq < (deadZone * deadZone)){
-		x = 0;
-		y = 0;
-	}
-	else{
-		float d2 = 2000;
-
-		if(v1.x > -d2 && v1.x < d2){
-			v1.x = 0;
-		}
-
-		if(v1.y > -d2 && v1.y < d2){
-			v1.y = 0;
-		}
-
-		//x = v1.x;
-		//y = v1.y;
-
-		
-		v1.Normalize();
-
-		float scale = (idMath::Sqrt(lengthSq) - deadZone) / (float) (SHRT_MAX - deadZone);
-
-		x = v1.x * scale * SHRT_MAX;
-		y = v1.y * scale * SHRT_MAX;
-	}
-}
-*/
 
 /*
 ===============

@@ -33,6 +33,12 @@ If you have questions concerning this license or the applicable additional terms
 #include "framework/EventLoop.h"
 #include "idlib/math/Vector.h"
 
+#include <SDL_joystick.h>
+
+#ifndef SDL_JOYSTICK_AXIS_MAX
+	#define SDL_JOYSTICK_AXIS_MAX 32767
+#endif
+
 idCVar idEventLoop::com_journal( "com_journal", "0", CVAR_INIT|CVAR_SYSTEM, "1 = record journal, 2 = play back journal", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
 
 idEventLoop eventLoopLocal;
@@ -41,7 +47,7 @@ idEventLoop *eventLoop = &eventLoopLocal;
 //mouse coordinates based on the right joystick
 int dx = 0;
 int dy = 0;
-int mouseSpeed = 10;
+int mouseSpeed = 15;
 
 /*
 =================
@@ -176,8 +182,8 @@ void idEventLoop::ProcessEvent( sysEvent_t ev ) {
 
 sysEvent_t CreateMouseEvent(int dx, int dy){
 	idVec2 v = idVec2();
-	v.x = (dx / (float) SHRT_MAX) * mouseSpeed; //TODO - add variable - controller mouse speed
-	v.y = (dy / (float) SHRT_MAX) * mouseSpeed;
+	v.x = (dx / (float) SDL_JOYSTICK_AXIS_MAX) * mouseSpeed; //TODO - add variable - controller mouse speed
+	v.y = (dy / (float) SDL_JOYSTICK_AXIS_MAX) * mouseSpeed;
 
 	v.Truncate(mouseSpeed);
 
