@@ -36,7 +36,7 @@ bind "JOY13" "_zoom"
 ```
 
 ### Custom Controller Mapping
-If your controller requires a custom mapping to be compatible with SDL's Game Controller API, then add your custom mapping to `${fs_configPath}/gamecontroller.db` i.e. `~/.config/dhewm3/base/gamecontroller.db` in Linux or `%USERPROFILE%/Documents/My Games/dhewm3/gamecontroller.db` in Windows.
+If your controller requires a custom mapping to be compatible with SDL's Game Controller API, then add your custom mapping to `${fs_configPath}/gamecontrollerdb.txt` i.e. `~/.config/dhewm3/base/gamecontrollerdb.txt` in Linux or `%USERPROFILE%/Documents/My Games/dhewm3/gamecontrollerdb.txt` in Windows.
 
 ### Navigating the UI
 The mouse pointer is controlled via the right stick.  In the Main Menu, use X to click.  While for the In Game GUIs, such as screens or the PDA, the mouse click is tied to the `_attack` button.
