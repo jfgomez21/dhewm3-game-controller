@@ -732,6 +732,16 @@ sysEvent_t Sys_GetEvent() {
 		case SDL_CONTROLLERBUTTONDOWN:
 		case SDL_CONTROLLERBUTTONUP:
 			return handleControllerButton(ev);
+		case SDL_CONTROLLERDEVICEADDED:
+			if(!common->IsGameControllerAttached()){
+				common->OpenGameController(ev.cdevice.which);
+			}
+
+			continue;
+		case SDL_CONTROLLERDEVICEREMOVED:
+			common->CloseGameController(ev.cdevice.which);
+
+			continue;
 #endif
 		case SDL_MOUSEMOTION:
 			res.evType = SE_MOUSE;

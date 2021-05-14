@@ -190,6 +190,13 @@ public:
 
 	void						SetMachineSpec( void );
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	bool			OpenGameController(int index);
+
+	void			CloseGameController(int instanceId);
+	bool 			IsGameControllerAttached();
+#endif
+
 private:
 	void						InitCommands( void );
 	void						InitRenderSystem( void );
@@ -238,6 +245,7 @@ private:
 
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	SDL_GameController *gameController;
+	int gameControllerId;
 #endif
 
 };
@@ -271,6 +279,7 @@ idCommonLocal::idCommonLocal( void ) {
 
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	gameController = NULL;
+	gameControllerId = 0;
 #endif
 }
 
@@ -2869,6 +2878,37 @@ static bool checkForHelp(int argc, char **argv)
 #endif // UINTPTR_MAX defined
 
 #if SDL_VERSION_ATLEAST(2, 0, 0)
+bool idCommonLocal::OpenGameController(int index){
+	gameController = SDL_GameControllerOpen(index);
+	bool result = false;
+
+	if(gameController){
+		gameControllerId = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gameController));
+
+		Printf("Controller Opened: %s\n", SDL_GameControllerName(gameController));
+
+		result = true;
+	}
+	else{
+		Printf("Failed to open controller %d: %s\n", index, SDL_GetError());
+	}
+
+	return result;
+}
+
+void idCommonLocal::CloseGameController(int instanceId){
+	if(gameControllerId == instanceId){
+		SDL_GameControllerClose(gameController);
+
+		gameController = NULL;
+		gameControllerId = 0;
+	}
+}
+
+bool idCommonLocal::IsGameControllerAttached(){
+	return gameController != NULL;
+}
+
 void idCommonLocal::InitGameController(){
 	const char *mappings = fileSystem->RelativePathToOSPath("gamecontroller.db", "fs_configpath");
 
@@ -2877,25 +2917,33 @@ void idCommonLocal::InitGameController(){
 	if(fileSystem->ReadFile("gamecontroller.db", NULL) > 0){
 		int result = SDL_GameControllerAddMappingsFromFile(mappings);
 
-		if(result == -1){
-			Printf("Failed to read controller mappings: %s\n", SDL_GetError());
-		}
-		else{
+		if(result > 0){
 			Printf("Controller Mapping(s): %d\n", result);
+		}
+		else if (result < 0){
+			Printf("Failed to read controller mappings: %s\n", SDL_GetError());
 		}
 	}
 
-	if(SDL_IsGameController(0)){
-		gameController = SDL_GameControllerOpen(0);
+	int joystickCount = SDL_NumJoysticks();
 
-		if(gameController){
-			Printf("Controller Opened: %s\n", SDL_GameControllerName(gameController));
+	if(joystickCount > 0){
+		int index = 0;
+
+		while(gameController == NULL && index < joystickCount){
+			if(SDL_IsGameController(index)){
+				OpenGameController(index);
+			}
+
+			index++;
 		}
-		else{
-			Printf("Failed to open controller: %s\n", SDL_GetError());
+
+		if(gameController == NULL){
+			Printf("No Controllers Found\n");
 		}
 	}
 	else{
+
 		Printf("No Controllers Found\n");
 	}	
 }
@@ -3119,6 +3167,7 @@ void idCommonLocal::Shutdown( void ) {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	if(SDL_GameControllerGetAttached(gameController)){
 		SDL_GameControllerClose(gameController);
+		gameControllerId = 0;
 	}
 #endif
 

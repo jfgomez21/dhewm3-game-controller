@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <SDL_version.h>
+
 #include "framework/CVarSystem.h"
 
 /*
@@ -211,6 +213,13 @@ public:
 
 								// Directly sample a keystate.
 	virtual int					KeyState( int key ) = 0;
+
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	virtual bool			OpenGameController(int index);
+
+	virtual void			CloseGameController(int instanceId);
+	virtual bool 			IsGameControllerAttached();
+#endif
 
 	/* Some Mods (like Ruiner and DarkMod when it still was a mod) used "SourceHook"
 	 * to override Doom3 Methods to call their own code before the original method
