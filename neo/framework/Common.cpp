@@ -2910,7 +2910,7 @@ bool idCommonLocal::IsGameControllerAttached(){
 }
 
 void idCommonLocal::InitGameController(){
-	const char *mappings = fileSystem->RelativePathToOSPath("gamecontroller.db", "fs_configpath");
+	const char *mappings = fileSystem->RelativePathToOSPath("gamecontrollerdb.txt", "fs_configpath");
 
 	Printf("Controller Mappings Location: %s\n", mappings);
 
@@ -2985,7 +2985,7 @@ void idCommonLocal::Init( int argc, char **argv ) {
 #endif
 #endif
 
-	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER))
+	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER)) // init joystick to work around SDL 2.0.9 bug #4391
 		Sys_Error("Error while initializing SDL: %s", SDL_GetError());
 
 	Sys_InitThreads();

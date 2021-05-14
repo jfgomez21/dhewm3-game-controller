@@ -1,3 +1,46 @@
+_dhewm3-game-controller_ adds gamepad support to _dhewm 3_ via SDL2 Game Controller API.
+
+### Controller Layout
+Below is the mapping between the controller and Doom 3's internal keys.
+```
+A - JOY1
+B - JOY2
+Y - JOY3
+X - JOY4
+L1 - JOY5
+R1 - JOY6
+L2 - JOY7
+R2 - JOY8
+SELECT - JOY9
+START - JOY10
+GUIDE - JOY11
+L3 - JOY12
+R3 - JOY13
+```
+
+### Controller Bindings
+Bindings must be added to your `${fs_configPath}/dhewm.cfg` file i.e. `~/.config/dhewm3/base/dhewm.cfg` in Linux or `%USERPROFILE%/Documents/My Games/dhewm3/base/dhewm.cfg` in Windows.
+```
+bind "JOY1" "_moveup"
+bind "JOY2" "_impulse15"
+bind "JOY3" "_impulse14"
+bind "JOY4" "_impulse13"
+bind "JOY5" "_impulse11"
+bind "JOY6" "_impulse19"
+bind "JOY7" "_speed"
+bind "JOY8" "_attack"
+bind "JOY9" "savegame quick"
+bind "JOY10" "togglemenu"
+bind "JOY12" "_movedown"
+bind "JOY13" "_zoom"
+```
+
+### Custom Controller Mapping
+If your controller requires a custom mapping to be compatible with SDL's Game Controller API, then add your custom mapping to `${fs_configPath}/gamecontrollerdb.txt` i.e. `~/.config/dhewm3/base/gamecontrollerdb.txt` in Linux or `%USERPROFILE%/Documents/My Games/dhewm3/gamecontrollerdb.txt` in Windows.
+
+### Navigating the UI
+The mouse pointer is controlled via the right stick.  In the Main Menu, use X to click.  While for the In Game GUIs, such as screens or the PDA, the mouse click is tied to the `_attack` button.
+
 # ABOUT
 
 _dhewm 3_ is a _Doom 3_ GPL source port, known to work on at least Windows, Linux, macOS and FreeBSD.
