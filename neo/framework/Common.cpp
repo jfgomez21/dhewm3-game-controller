@@ -190,12 +190,9 @@ public:
 
 	void						SetMachineSpec( void );
 
-#if SDL_VERSION_ATLEAST(2, 0, 0)
-	bool			OpenGameController(int index);
-
-	void			CloseGameController(int instanceId);
-	bool 			IsGameControllerAttached();
-#endif
+	virtual bool					OpenGameController(int index);
+	virtual void					CloseGameController(int instanceId);
+	virtual bool 					IsGameControllerAttached();
 
 private:
 	void						InitCommands( void );
@@ -215,9 +212,7 @@ private:
 	void						PrintLoadingMessage( const char *msg );
 	void						FilterLangList( idStrList* list, idStr lang );
 
-#if SDL_VERSION_ATLEAST(2, 0, 0)
 	void						InitGameController();
-#endif
 
 	bool						com_fullyInitialized;
 	bool						com_refreshOnPrint;		// update the screen every print for dmap
@@ -2877,8 +2872,8 @@ static bool checkForHelp(int argc, char **argv)
 
 #endif // UINTPTR_MAX defined
 
-#if SDL_VERSION_ATLEAST(2, 0, 0)
 bool idCommonLocal::OpenGameController(int index){
+#if SDL_VERSION_ATLEAST(2, 0, 0)
 	gameController = SDL_GameControllerOpen(index);
 	bool result = false;
 
@@ -2894,22 +2889,32 @@ bool idCommonLocal::OpenGameController(int index){
 	}
 
 	return result;
+#else
+	return false;
+#endif
 }
 
 void idCommonLocal::CloseGameController(int instanceId){
+#if SDL_VERSION_ATLEAST(2, 0, 0)
 	if(gameControllerId == instanceId){
 		SDL_GameControllerClose(gameController);
 
 		gameController = NULL;
 		gameControllerId = 0;
 	}
+#endif
 }
 
 bool idCommonLocal::IsGameControllerAttached(){
+#if SDL_VERSION_ATLEAST(2, 0, 0)
 	return gameController != NULL;
+#else
+	return false;
+#endif
 }
 
 void idCommonLocal::InitGameController(){
+#if SDL_VERSION_ATLEAST(2, 0, 0)
 	const char *mappings = fileSystem->RelativePathToOSPath("gamecontrollerdb.txt", "fs_configpath");
 
 	Printf("Controller Mappings Location: %s\n", mappings);
@@ -2946,8 +2951,8 @@ void idCommonLocal::InitGameController(){
 
 		Printf("No Controllers Found\n");
 	}	
-}
 #endif
+}
 
 /*
 =================
@@ -3085,14 +3090,7 @@ void idCommonLocal::Init( int argc, char **argv ) {
 		// load the persistent console history
 		console->LoadHistory();
 
-#if SDL_VERSION_ATLEAST(2, 0, 0)
-		if(SDL_NumJoysticks() > 0){
-			InitGameController();
-		}
-		else{
-			Printf("No joysticks found\n");
-		}
-#endif
+		InitGameController();
 
 		com_fullyInitialized = true;
 	}

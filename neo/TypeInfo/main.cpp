@@ -87,6 +87,11 @@ public:
 	virtual const char *	BindingFromKey( const char *key ) { return NULL; }
 	virtual int				ButtonState( int key ) { return 0; }
 	virtual int				KeyState( int key ) { return 0; }
+
+	virtual bool			OpenGameController(int index) { return false; }
+	virtual void			CloseGameController(int instanceId) {}
+	virtual bool 			IsGameControllerAttached() { return false; }
+
 };
 
 idCVar com_developer( "developer", "0", CVAR_BOOL|CVAR_SYSTEM, "developer mode" );
