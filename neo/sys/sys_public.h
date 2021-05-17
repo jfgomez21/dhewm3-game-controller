@@ -46,9 +46,9 @@ typedef enum {
 typedef enum {
 	LX_AXIS,
 	LY_AXIS,
-	LEFT_TRIGGER,
 	RX_AXIS,
 	RY_AXIS,
+	LEFT_TRIGGER,
 	RIGHT_TRIGGER,
 	MAX_JOYSTICK_AXIS
 } joystickAxis_t;
