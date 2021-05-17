@@ -2919,7 +2919,7 @@ void idCommonLocal::InitGameController(){
 
 	Printf("Controller Mappings Location: %s\n", mappings);
 
-	if(fileSystem->ReadFile("gamecontroller.db", NULL) > 0){
+	if(fileSystem->ReadFile("gamecontrollerdb.txt", NULL) > 0){
 		int result = SDL_GameControllerAddMappingsFromFile(mappings);
 
 		if(result > 0){
